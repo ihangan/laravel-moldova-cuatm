@@ -11,6 +11,10 @@
         "geo"
     ],
     "homepage": "https://github.com/ihangan/laravel-moldova-cuatm",
+    "support": {
+        "issues": "https://github.com/ihangan/laravel-moldova-cuatm/issues",
+        "source": "https://github.com/ihangan/laravel-moldova-cuatm"
+    },
     "license": "MIT",
     "authors": [
         {

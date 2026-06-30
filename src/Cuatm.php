@@ -33,6 +33,17 @@ final class Cuatm
     }
 
     /**
+     * Top-level units: every raion, municipality and special region. The entry
+     * point for a cascading picker (drill down with {@see childrenOf()}).
+     *
+     * @return Collection<int, Location>
+     */
+    public function roots(): Collection
+    {
+        return Location::query()->roots()->orderBy('sort_order')->get();
+    }
+
+    /**
      * @return Collection<int, Location>
      */
     public function raioane(): Collection

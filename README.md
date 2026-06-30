@@ -1,7 +1,10 @@
+![Moldova CUATM for Laravel](art/social-card.png)
+
 # Moldova CUATM for Laravel
 
 [![Latest version](https://img.shields.io/packagist/v/ihangan/laravel-moldova-cuatm.svg)](https://packagist.org/packages/ihangan/laravel-moldova-cuatm)
 [![Tests](https://github.com/ihangan/laravel-moldova-cuatm/actions/workflows/run-tests.yml/badge.svg)](https://github.com/ihangan/laravel-moldova-cuatm/actions/workflows/run-tests.yml)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen.svg)](https://github.com/ihangan/laravel-moldova-cuatm/actions/workflows/static.yml)
 [![Total downloads](https://img.shields.io/packagist/dt/ihangan/laravel-moldova-cuatm.svg)](https://packagist.org/packages/ihangan/laravel-moldova-cuatm)
 [![License](https://img.shields.io/packagist/l/ihangan/laravel-moldova-cuatm.svg)](LICENSE.md)
 
@@ -116,10 +119,76 @@ use Ihangan\MoldovaCuatm\Facades\Cuatm;
 
 Cuatm::findByCode('0111001');
 Cuatm::findBySlug('chisinau');
+Cuatm::roots();          // raioane, municipalities, Gagauzia, Transnistria
 Cuatm::raioane();
 Cuatm::childrenOf($raion);
-Cuatm::tree(); // roots with their children eager-loaded
+Cuatm::tree();           // roots with their children eager-loaded
 ```
+
+### Cascading location picker
+
+`roots()` and `childrenOf()` are all you need to build a "pick a region, then a
+locality below it" selector. The hierarchy isn't a fixed depth (a raion goes
+straight to its villages, while Chișinău goes municipality → sector → town →
+village), so the picker keeps offering another dropdown while the chosen unit
+still has children.
+
+```php
+use Ihangan\MoldovaCuatm\Facades\Cuatm;
+use Livewire\Component;
+
+class LocationPicker extends Component
+{
+    /** @var array<int, int> the selected location id at each level */
+    public array $path = [];
+
+    public function selectLevel(int $level, ?int $id): void
+    {
+        $this->path = array_slice($this->path, 0, $level); // drop the deeper levels
+
+        if ($id !== null) {
+            $this->path[$level] = $id;
+        }
+    }
+
+    public function render()
+    {
+        $levels = collect([Cuatm::roots()]);
+
+        foreach ($this->path as $id) {
+            $children = Cuatm::childrenOf($id);
+
+            if ($children->isEmpty()) {
+                break; // reached the bottom of the tree
+            }
+
+            $levels->push($children);
+        }
+
+        return view('livewire.location-picker', ['levels' => $levels]);
+    }
+}
+```
+
+```blade
+{{-- resources/views/livewire/location-picker.blade.php --}}
+<div class="space-y-3">
+    @foreach ($levels as $level => $options)
+        <select wire:change="selectLevel({{ $level }}, $event.target.value)">
+            <option value="">—</option>
+            @foreach ($options as $location)
+                <option value="{{ $location->id }}" @selected(($path[$level] ?? null) === $location->id)>
+                    {{ $location->name }}
+                </option>
+            @endforeach
+        </select>
+    @endforeach
+</div>
+```
+
+The selected location is the last entry in `$path`. Outside Livewire the same two
+calls drive any UI: render `Cuatm::roots()` first, then `Cuatm::childrenOf($id)`
+each time a level is chosen.
 
 ## Configuration
 
@@ -160,6 +229,26 @@ file and run `php artisan cuatm:import` again.
 ```bash
 composer test
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) and the [releases](https://github.com/ihangan/laravel-moldova-cuatm/releases).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security
+
+Found a security issue? Email igorhangan@gmail.com instead of using the issue tracker.
+See [SECURITY.md](.github/SECURITY.md).
+
+## Credits
+
+- [Igor Hangan](https://github.com/ihangan)
+- The administrative data comes from the CUATM classifier published by the
+  National Bureau of Statistics of Moldova, with Russian and Ukrainian names from
+  Wikidata.
 
 ## License
 

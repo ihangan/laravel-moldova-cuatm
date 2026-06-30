@@ -41,6 +41,14 @@ final class CuatmFacadeTest extends TestCase
     }
 
     #[Test]
+    public function it_lists_every_top_level_unit(): void
+    {
+        // 32 raioane + 3 municipalities + Gagauzia + Transnistria.
+        $this->assertCount(37, Cuatm::roots());
+        $this->assertTrue(Cuatm::roots()->every(fn ($location): bool => $location->isRoot()));
+    }
+
+    #[Test]
     public function the_tree_returns_roots_with_children(): void
     {
         $tree = Cuatm::tree();

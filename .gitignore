@@ -4,3 +4,4 @@ composer.lock
 .phpunit.result.cache
 .phpunit.cache
 .php-cs-fixer.cache
+art/social-card.html
