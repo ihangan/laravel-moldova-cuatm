@@ -1,0 +1,67 @@
+{
+    "name": "ihangan/laravel-moldova-cuatm",
+    "description": "Moldova's CUATM administrative-territorial divisions (raioane, cities, towns and villages) as Eloquent models with multilingual names and coordinates.",
+    "keywords": [
+        "laravel",
+        "moldova",
+        "cuatm",
+        "locations",
+        "localities",
+        "administrative-divisions",
+        "geo"
+    ],
+    "homepage": "https://github.com/ihangan/laravel-moldova-cuatm",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Igor Hangan",
+            "email": "igorhangan@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "illuminate/console": "^12.0 || ^13.0",
+        "illuminate/contracts": "^12.0 || ^13.0",
+        "illuminate/database": "^12.0 || ^13.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "spatie/laravel-package-tools": "^1.92",
+        "spatie/laravel-translatable": "^6.11"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "phpunit/phpunit": "^11.5.50 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ihangan\\MoldovaCuatm\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ihangan\\MoldovaCuatm\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Ihangan\\MoldovaCuatm\\MoldovaCuatmServiceProvider"
+            ],
+            "aliases": {
+                "Cuatm": "Ihangan\\MoldovaCuatm\\Facades\\Cuatm"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
