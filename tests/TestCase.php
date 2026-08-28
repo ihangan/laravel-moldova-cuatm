@@ -8,6 +8,7 @@ use Ihangan\MoldovaCuatm\MoldovaCuatmServiceProvider;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Application;
 use Illuminate\Testing\PendingCommand;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Spatie\Translatable\Facades\Translatable;
 use Spatie\Translatable\TranslatableServiceProvider;
@@ -30,6 +31,7 @@ abstract class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
+            LivewireServiceProvider::class,
             TranslatableServiceProvider::class,
             MoldovaCuatmServiceProvider::class,
         ];
@@ -40,6 +42,14 @@ abstract class TestCase extends Orchestra
      */
     protected function defineEnvironment($app): void
     {
+        // Livewire signs its payloads, so the test app needs a key.
+        $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('a', 32)));
+
+        $app['config']->set('view.paths', [
+            __DIR__.'/Fixtures/views',
+            ...(array) $app['config']->get('view.paths', []),
+        ]);
+
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
             'driver' => 'sqlite',

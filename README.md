@@ -175,77 +175,162 @@ $location = Location::where('slug', 'chisinau')->first();
 [$location->lat, $location->lng]; // 47.005..., 28.857...
 ```
 
-### Facade
+### The query helper
 
-A small facade wraps the common lookups when you would rather not write the
-queries by hand:
+`Cuatm` wraps the lookups you would otherwise write by hand. It is bound as a
+singleton, so inject it wherever a constructor is available:
+
+```php
+use Ihangan\MoldovaCuatm\Cuatm;
+
+final readonly class LocalityOptions
+{
+    public function __construct(private Cuatm $cuatm) {}
+
+    public function forRegion(int $regionId): Collection
+    {
+        return $this->cuatm->childrenOf($regionId);
+    }
+}
+```
+
+A Livewire component has no constructor, so inject into `mount()`, into an
+action, or into `render()`:
+
+```php
+public function render(Cuatm $cuatm): View
+{
+    return view('picker', ['roots' => $cuatm->roots()]);
+}
+```
+
+The facade is for the places where injection would be noise, a Blade view or a
+tinker session:
 
 ```php
 use Ihangan\MoldovaCuatm\Facades\Cuatm;
 
-Cuatm::findByCode('0112');            // CUATM identifier
+Cuatm::findByCode('0112');             // CUATM identifier
 Cuatm::findByStatisticCode('0111001'); // statistical code
 Cuatm::findBySlug('chisinau');
-Cuatm::roots();          // districts, municipalities, Gagauzia, Transnistria
+Cuatm::roots();                        // districts, municipalities, Gagauzia, Transnistria
 Cuatm::districts();
 Cuatm::childrenOf($district);
-Cuatm::tree();           // roots with their children eager-loaded
+Cuatm::tree();                         // roots with their children eager-loaded
 ```
+
+Neither is required. Every method is a plain Eloquent query on `Location`, so
+reach past the helper the moment you want something it does not cover.
 
 ### Cascading location picker
 
-`roots()` and `childrenOf()` are all you need to build a "pick a region, then a
-locality below it" selector. The hierarchy isn't a fixed depth (a district goes
-straight to its villages, while Chișinău goes municipality → sector → town →
-village), so the picker keeps offering another dropdown while the chosen unit
-still has children.
+The hierarchy is not a fixed depth. A district goes straight to its villages,
+while Chișinău goes municipality → sector → town → village. So the picker offers
+another select for as long as the chosen unit still has children, and choosing
+again higher up drops everything below it.
+
+`roots()` and `childrenOf()` are all it needs.
 
 ```php
-use Ihangan\MoldovaCuatm\Facades\Cuatm;
+<?php
+
+declare(strict_types=1);
+
+namespace App\Livewire;
+
+use Ihangan\MoldovaCuatm\Cuatm;
+use Ihangan\MoldovaCuatm\Models\Location;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Component;
 
-class LocationPicker extends Component
+/**
+ * Cascading location picker: one select per level, a new one appearing as long
+ * as the chosen unit still has children.
+ */
+final class LocationPicker extends Component
 {
-    /** @var array<int, int> the selected location id at each level */
+    /** @var list<int> the chosen location id at each level */
     public array $path = [];
 
-    public function selectLevel(int $level, ?int $id): void
-    {
-        $this->path = array_slice($this->path, 0, $level); // drop the deeper levels
+    public ?int $selected = null;
 
-        if ($id !== null) {
-            $this->path[$level] = $id;
+    public function mount(?int $selected = null): void
+    {
+        if ($selected === null) {
+            return;
         }
+
+        $location = Location::query()->find($selected);
+
+        if (! $location instanceof Location) {
+            return;
+        }
+
+        $this->path = array_map(
+            static fn (Location $step): int => $step->id,
+            [...array_reverse($location->ancestors()), $location],
+        );
+        $this->selected = $location->id;
     }
 
-    public function render()
+    /**
+     * Choosing at a level drops every deeper level: pick another district and
+     * the locality under the old one is gone.
+     */
+    public function choose(int $level, ?string $id): void
     {
-        $levels = collect([Cuatm::roots()]);
+        $this->path = array_slice($this->path, 0, $level);
 
-        foreach ($this->path as $id) {
-            $children = Cuatm::childrenOf($id);
-
-            if ($children->isEmpty()) {
-                break; // reached the bottom of the tree
-            }
-
-            $levels->push($children);
+        if ($id !== null && $id !== '') {
+            $this->path[] = (int) $id;
         }
 
-        return view('livewire.location-picker', ['levels' => $levels]);
+        $this->selected = $this->path === [] ? null : $this->path[count($this->path) - 1];
+
+        $this->dispatch('location-selected', locationId: $this->selected);
+    }
+
+    public function render(Cuatm $cuatm): View
+    {
+        return view('location-picker', ['levels' => $this->levels($cuatm)]);
+    }
+
+    /**
+     * Every level to show: the roots, then the children of each chosen unit,
+     * stopping at the first one that has none.
+     *
+     * @return list<Collection<int, Location>>
+     */
+    private function levels(Cuatm $cuatm): array
+    {
+        $levels = [$cuatm->roots()];
+
+        foreach ($this->path as $id) {
+            $children = $cuatm->childrenOf($id);
+
+            if ($children->isEmpty()) {
+                break;
+            }
+
+            $levels[] = $children;
+        }
+
+        return $levels;
     }
 }
 ```
 
 ```blade
-{{-- resources/views/livewire/location-picker.blade.php --}}
-<div class="space-y-3">
+{{-- resources/views/location-picker.blade.php --}}
+<div>
     @foreach ($levels as $level => $options)
-        <select wire:change="selectLevel({{ $level }}, $event.target.value)">
-            <option value="">—</option>
+        <select wire:change="choose({{ $level }}, $event.target.value)">
+            <option value="">&mdash;</option>
+
             @foreach ($options as $location)
                 <option value="{{ $location->id }}" @selected(($path[$level] ?? null) === $location->id)>
-                    {{ $location->name }}
+                    {{ $location->name }} ({{ $location->type->label() }})
                 </option>
             @endforeach
         </select>
@@ -253,9 +338,30 @@ class LocationPicker extends Component
 </div>
 ```
 
-The selected location is the last entry in `$path`. Outside Livewire the same two
-calls drive any UI: render `Cuatm::roots()` first, then `Cuatm::childrenOf($id)`
-each time a level is chosen.
+Drop it in with or without a preselected location. Passing one reopens the whole
+chain down to it, so an edit form comes back with every level already chosen:
+
+```blade
+<livewire:location-picker />
+<livewire:location-picker :selected="$listing->location_id" />
+```
+
+The page hears about every choice:
+
+```php
+use Livewire\Attributes\On;
+
+#[On('location-selected')]
+public function locationChosen(?int $locationId): void
+{
+    $this->form->location_id = $locationId;
+}
+```
+
+This is not a sketch. The component above is the one in `tests/Fixtures`, bar the
+namespace, and the package's suite drives it across the real dataset: from
+Chișinău to Botanica to Sîngera to Dobrogea, then back up to check that choosing
+again higher drops the levels below.
 
 ## Configuration
 

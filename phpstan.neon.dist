@@ -8,3 +8,10 @@ parameters:
         - config
         - tests
     tmpDir: build/phpstan
+    ignoreErrors:
+        # The picker fixture mirrors the README example verbatim. Its view lives
+        # in tests/Fixtures/views, which larastan cannot resolve to a
+        # view-string without a booted application.
+        -
+            message: '#Parameter \#1 \$view of function view expects view-string\|null, string given\.#'
+            path: tests/Fixtures/LocationPicker.php
