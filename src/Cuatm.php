@@ -19,6 +19,11 @@ final class Cuatm
         return Location::query()->whereCode($code)->first();
     }
 
+    public function findByStatisticCode(string $code): ?Location
+    {
+        return Location::query()->whereStatisticCode($code)->first();
+    }
+
     public function findBySlug(string $slug): ?Location
     {
         return Location::query()->where('slug', $slug)->first();
@@ -33,7 +38,7 @@ final class Cuatm
     }
 
     /**
-     * Top-level units: every raion, municipality and special region. The entry
+     * Top-level units: every district, municipality and special region. The
      * point for a cascading picker (drill down with {@see childrenOf()}).
      *
      * @return Collection<int, Location>
@@ -46,9 +51,9 @@ final class Cuatm
     /**
      * @return Collection<int, Location>
      */
-    public function raioane(): Collection
+    public function districts(): Collection
     {
-        return $this->ofType(LocationType::Raion);
+        return $this->ofType(LocationType::District);
     }
 
     /**

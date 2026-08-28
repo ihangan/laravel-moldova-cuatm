@@ -13,7 +13,7 @@ final class LocationModelTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('cuatm:import')->assertSuccessful();
+        $this->import();
     }
 
     #[Test]

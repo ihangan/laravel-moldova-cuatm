@@ -16,6 +16,7 @@ final class MoldovaCuatmServiceProvider extends PackageServiceProvider
         $package
             ->name('laravel-moldova-cuatm')
             ->hasConfigFile('moldova-cuatm')
+            ->hasTranslations()
             ->hasMigration('create_cuatm_locations_table')
             ->hasCommand(ImportCuatmCommand::class)
             ->hasInstallCommand(function (InstallCommand $command): void {

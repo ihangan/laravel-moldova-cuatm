@@ -1,6 +1,6 @@
 {
     "name": "ihangan/laravel-moldova-cuatm",
-    "description": "Moldova's CUATM administrative-territorial divisions (raioane, cities, towns and villages) as Eloquent models with multilingual names and coordinates.",
+    "description": "Moldova's CUATM administrative-territorial divisions (districts, cities, towns and villages) as Eloquent models with multilingual names and coordinates.",
     "keywords": [
         "laravel",
         "moldova",

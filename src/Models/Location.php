@@ -17,7 +17,8 @@ use Spatie\Translatable\HasTranslations;
  *
  * @property int $id
  * @property int|null $parent_id
- * @property string $code
+ * @property string $code the 4-sign CUATM unique identifier
+ * @property string $statistic_code the 7-digit statistical code
  * @property string $name
  * @property string $slug
  * @property LocationType $type
@@ -38,6 +39,7 @@ class Location extends Model
     protected $fillable = [
         'parent_id',
         'code',
+        'statistic_code',
         'name',
         'slug',
         'type',
@@ -131,5 +133,14 @@ class Location extends Model
     public function scopeWhereCode(Builder $query, string $code): Builder
     {
         return $query->where('code', $code);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeWhereStatisticCode(Builder $query, string $code): Builder
+    {
+        return $query->where('statistic_code', $code);
     }
 }

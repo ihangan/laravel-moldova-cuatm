@@ -15,17 +15,4 @@ return [
      */
     'connection' => null,
 
-    /*
-     * Locales the shipped data carries. Romanian is always present; Russian and
-     * Ukrainian come from Wikidata exonyms and exist for most localities;
-     * English is only filled in for the larger cities and otherwise falls back
-     * to Romanian.
-     */
-    'locales' => ['ro', 'ru', 'uk', 'en'],
-
-    /*
-     * Locale returned when a name is missing in the requested one.
-     */
-    'fallback_locale' => 'ro',
-
 ];

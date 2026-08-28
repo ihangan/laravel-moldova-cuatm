@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Ihangan\MoldovaCuatm\Tests;
 
 use Ihangan\MoldovaCuatm\MoldovaCuatmServiceProvider;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Application;
+use Illuminate\Testing\PendingCommand;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Spatie\Translatable\Facades\Translatable;
 use Spatie\Translatable\TranslatableServiceProvider;
@@ -49,6 +51,25 @@ abstract class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         $migration = include __DIR__.'/../database/migrations/create_cuatm_locations_table.php.stub';
+
+        if (! $migration instanceof Migration || ! method_exists($migration, 'up')) {
+            self::fail('The migration stub did not return a runnable migration.');
+        }
+
         $migration->up();
+    }
+
+    /**
+     * Run the importer and assert it finished cleanly.
+     */
+    protected function import(bool $fresh = false): void
+    {
+        $command = $this->artisan('cuatm:import', $fresh ? ['--fresh' => true] : []);
+
+        if (! $command instanceof PendingCommand) {
+            self::fail('artisan() did not return a pending command.');
+        }
+
+        $command->assertSuccessful();
     }
 }

@@ -13,9 +13,9 @@ model you can query straight away. The data comes from CUATM, the official
 classifier maintained by the National Bureau of Statistics, so the codes and the
 hierarchy match what government systems use.
 
-You get the 32 raioane, the municipalities, the sectors of Chișinău, every town
+You get the 32 districts, the municipalities, the sectors of Chișinău, every town
 and all ~1,600 villages, plus Gagauzia and the Stînga Nistrului units. Each one
-carries its official CUATM code, a parent link, names in Romanian, Russian and
+carries both official codes, a parent link, names in Romanian, Russian and
 Ukrainian, and WGS84 coordinates.
 
 I built this for a rental classifieds site that needed a real location tree
@@ -53,16 +53,30 @@ Eloquent model.
 use Ihangan\MoldovaCuatm\Models\Location;
 use Ihangan\MoldovaCuatm\Enums\LocationType;
 
-// By the official CUATM code or by slug.
-Location::whereCode('0111001')->first();
+// By the CUATM identifier, by the statistical code, or by slug.
+Location::whereCode('0112')->first();
+Location::whereStatisticCode('0111001')->first();
 Location::where('slug', 'chisinau')->first();
 
-// Every raion.
-Location::ofType(LocationType::Raion)->get();
+// Every district (raion, in the classifier's own wording).
+Location::ofType(LocationType::District)->get();
 
 // Top-level units only.
 Location::roots()->get();
 ```
+
+### The two codes
+
+CUATM numbers every locality twice, and the two systems are unrelated.
+
+| Column | What it is | Example (Dobrogea) |
+|---|---|---|
+| `code` | *Codul unic de identificare* - 4 signs, flat, the one the classifier tells automated systems to key on | `0112` |
+| `statistic_code` | *Codul statistic* - 7 digits, `RR-LLL-CC`, encodes the position in the hierarchy | `0111001` |
+
+Băcioi makes the difference obvious: statistical code `0112000`, CUATM identifier
+`5511`. Tiraspol is `9801000` and `0700`. Because the identifier carries no
+structure, walk the tree with `parent` / `children` rather than by slicing codes.
 
 ### Names
 
@@ -85,6 +99,58 @@ returns Romanian instead of an empty string:
 use Spatie\Translatable\Facades\Translatable;
 
 Translatable::fallback(fallbackLocale: 'ro', fallbackAny: true);
+```
+
+### Caching
+
+The package caches nothing, deliberately.
+
+The reads a picker actually makes are already cheap - `roots()` is about 1.5 ms
+and `childrenOf()` under a millisecond - so a cache in front of them would buy
+nothing and hand you an invalidation problem.
+
+`tree()` and `ofType(LocationType::Village)` are the expensive ones, 20-40 ms,
+and nearly all of that is Eloquent hydrating a thousand-odd models rather than
+the query. Caching the models helps less than it looks: the serialised tree is
+around 2 MB, which costs ~13 ms to read back and ~40 ms to write. Cache the
+shape your view needs instead - same tree, 53 KB, 0.3 ms to read back:
+
+```php
+use Ihangan\MoldovaCuatm\Facades\Cuatm;
+use Ihangan\MoldovaCuatm\Models\Location;
+use Illuminate\Support\Facades\Cache;
+
+$options = Cache::rememberForever('cuatm.picker', fn (): array => Cuatm::tree()
+    ->map(fn (Location $root): array => [
+        'id' => $root->id,
+        'name' => $root->name,
+        'children' => $root->children->map->only(['id', 'name'])->all(),
+    ])
+    ->all());
+```
+
+Clear the key after `cuatm:import`. CUATM changes once every few years, so
+`rememberForever` is honest here.
+
+### Type labels
+
+`LocationType` is written in English because the code is, but nobody has to read
+it that way. Every case carries a label in all four locales.
+
+```php
+use Ihangan\MoldovaCuatm\Enums\LocationType;
+
+LocationType::District->label();      // current locale
+LocationType::District->label('ro');  // "raion"
+LocationType::District->label('en');  // "district"
+LocationType::Town->label('ro');      // "oraș"
+LocationType::Village->label('uk');   // "село"
+```
+
+Publish them if you want different wording:
+
+```bash
+php artisan vendor:publish --tag="moldova-cuatm-translations"
 ```
 
 ### Hierarchy
@@ -117,18 +183,19 @@ queries by hand:
 ```php
 use Ihangan\MoldovaCuatm\Facades\Cuatm;
 
-Cuatm::findByCode('0111001');
+Cuatm::findByCode('0112');            // CUATM identifier
+Cuatm::findByStatisticCode('0111001'); // statistical code
 Cuatm::findBySlug('chisinau');
-Cuatm::roots();          // raioane, municipalities, Gagauzia, Transnistria
-Cuatm::raioane();
-Cuatm::childrenOf($raion);
+Cuatm::roots();          // districts, municipalities, Gagauzia, Transnistria
+Cuatm::districts();
+Cuatm::childrenOf($district);
 Cuatm::tree();           // roots with their children eager-loaded
 ```
 
 ### Cascading location picker
 
 `roots()` and `childrenOf()` are all you need to build a "pick a region, then a
-locality below it" selector. The hierarchy isn't a fixed depth (a raion goes
+locality below it" selector. The hierarchy isn't a fixed depth (a district goes
 straight to its villages, while Chișinău goes municipality → sector → town →
 village), so the picker keeps offering another dropdown while the chosen unit
 still has children.
@@ -192,8 +259,7 @@ each time a level is chosen.
 
 ## Configuration
 
-Publish the config file if you need to change the table name, the connection or
-the locales:
+Publish the config file if you need to change the table name or the connection:
 
 ```bash
 php artisan vendor:publish --tag="moldova-cuatm-config"
@@ -203,8 +269,6 @@ php artisan vendor:publish --tag="moldova-cuatm-config"
 return [
     'table' => 'cuatm_locations',
     'connection' => null,
-    'locales' => ['ro', 'ru', 'uk', 'en'],
-    'fallback_locale' => 'ro',
 ];
 ```
 
@@ -215,10 +279,15 @@ clash with one your application may already have.
 
 The dataset lives in `database/data/cuatm.json` and ships with the package.
 
-- Codes, hierarchy and Romanian names come from CUATM (Clasificatorul unităților
-  administrativ-teritoriale ale Republicii Moldova), published by the National
-  Bureau of Statistics.
-- Russian and Ukrainian names are Wikidata exonyms.
+- Both codes, the hierarchy and the Romanian names come from CUATM
+  (Clasificatorul unităților administrativ-teritoriale ale Republicii Moldova),
+  published by the National Bureau of Statistics - edition of 21 October 2025.
+- Russian and Ukrainian names are Wikidata exonyms; the larger cities, the
+  sectors of Chișinău and the special regions were checked by hand and also
+  carry an English name.
+- Romanian names are normalised to the comma-below diacritics ș/ț. The
+  classifier is typeset with the Turkish cedilla letters ş/ţ, which sort and
+  compare differently.
 - Coordinates are from public geodata.
 
 CUATM changes rarely. When the Bureau publishes a new edition, replace the JSON

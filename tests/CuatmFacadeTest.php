@@ -13,13 +13,22 @@ final class CuatmFacadeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('cuatm:import')->assertSuccessful();
+        $this->import();
     }
 
     #[Test]
-    public function it_finds_a_locality_by_code(): void
+    public function it_finds_a_locality_by_its_cuatm_identifier(): void
     {
-        $location = Cuatm::findByCode('0111001');
+        $location = Cuatm::findByCode('0112');
+
+        $this->assertNotNull($location);
+        $this->assertSame('dobrogea', $location->slug);
+    }
+
+    #[Test]
+    public function it_finds_the_same_locality_by_its_statistical_code(): void
+    {
+        $location = Cuatm::findByStatisticCode('0111001');
 
         $this->assertNotNull($location);
         $this->assertSame('dobrogea', $location->slug);
@@ -35,15 +44,15 @@ final class CuatmFacadeTest extends TestCase
     }
 
     #[Test]
-    public function it_lists_all_raioane(): void
+    public function it_lists_all_districts(): void
     {
-        $this->assertCount(32, Cuatm::raioane());
+        $this->assertCount(32, Cuatm::districts());
     }
 
     #[Test]
     public function it_lists_every_top_level_unit(): void
     {
-        // 32 raioane + 3 municipalities + Gagauzia + Transnistria.
+        // 32 districts + 3 municipalities + Gagauzia + Transnistria.
         $this->assertCount(37, Cuatm::roots());
         $this->assertTrue(Cuatm::roots()->every(fn ($location): bool => $location->isRoot()));
     }
