@@ -402,8 +402,47 @@ The dataset lives in `database/data/cuatm.json` and ships with the package.
   compare differently.
 - Coordinates are from public geodata.
 
-CUATM changes rarely. When the Bureau publishes a new edition, replace the JSON
-file and run `php artisan cuatm:import` again.
+### Taking a new edition
+
+CUATM changes rarely. When the Bureau publishes one, upgrade the package and run
+the import again:
+
+```bash
+php artisan cuatm:import
+```
+
+Rows are matched on the CUATM identifier rather than on the slug, because the
+identifier is the one thing about a locality that does not change. A renamed
+locality therefore keeps its id, and with it every foreign key in your own
+tables; only its name and slug move. The command says what it did:
+
+```
++-----------+------------+
+|           | localities |
++-----------+------------+
+| created   | 1          |
+| renamed   | 1          |
+| updated   | 3          |
+| unchanged | 1716       |
++-----------+------------+
+  renamed: bujor -> bujorul-nou (code 1234)
+
+1 row(s) are no longer in the classifier. They were left alone, in case your own
+tables point at them:
+  vechi-sat (code 5678)
+```
+
+A locality the new edition dropped is reported and left in the table. Your rows
+may point at it, and the package has no business deciding that for you - remove
+it yourself once you have dealt with the references.
+
+Every run rewrites the fields the dataset owns, so an edit you made to a name or
+a coordinate does not survive an import. Keep changes like that in your own
+table.
+
+`--fresh` empties the table before importing, which detaches everything pointing
+at a location. It asks first when it runs in production, and `--force` skips that
+prompt, the same way `migrate:fresh` does.
 
 ## Testing
 

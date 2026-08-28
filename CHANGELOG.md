@@ -4,6 +4,24 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0]
+
+### Changed
+
+- `cuatm:import` matches existing rows on the CUATM identifier instead of the
+  slug. A renamed locality arrives with a new slug and its old identifier, so the
+  previous behaviour found nothing, tried to insert, and died on the unique index
+  on `code` half way through the import. Renames are now an update in place, so
+  the foreign keys in your own tables survive an edition change. An installation
+  coming from 1.x still matches by slug, since its `code` column holds the
+  statistical code and nothing would match on the identifier.
+- `cuatm:import` reports what it did: how many rows it created, renamed, updated
+  and left alone, the renames by name, and any row the classifier no longer has.
+  Stale rows are reported, never deleted - your tables may reference them.
+- `--fresh` asks before it runs in production and takes `--force` to skip the
+  prompt, the way `migrate:fresh` does. It empties the table, which detaches
+  everything pointing at a location.
+
 ## [2.1.0]
 
 ### Added
