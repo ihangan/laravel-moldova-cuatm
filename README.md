@@ -81,8 +81,7 @@ structure, walk the tree with `parent` / `children` rather than by slicing codes
 ### Names
 
 Names are translatable (backed by [spatie/laravel-translatable](https://github.com/spatie/laravel-translatable)).
-Romanian is always present; Russian and Ukrainian exist for most localities;
-English is filled in for the larger cities.
+Romanian and English are on every locality; Russian and Ukrainian on most.
 
 ```php
 $chisinau = Location::where('slug', 'chisinau')->first();
@@ -90,10 +89,17 @@ $chisinau = Location::where('slug', 'chisinau')->first();
 $chisinau->name;                          // current locale
 $chisinau->getTranslation('name', 'ru');  // "Кишинёв"
 $chisinau->getTranslation('name', 'uk');  // "Кишинів"
+$chisinau->getTranslation('name', 'en');  // "Chisinau"
 ```
 
-Set a fallback once (for example in a service provider) so a missing locale
-returns Romanian instead of an empty string:
+A Moldovan place name has no English translation, it has a romanisation, so the
+English name is the Romanian one with the diacritics folded away: `Călărași`
+is `Calarasi`, `Țînțăreni` is `Tintareni`. Where English has a real exonym it
+wins instead, which is why `Stînga Nistrului` reads `Transnistria`. For the 861
+names that carry no diacritics the two are the same string.
+
+Set a fallback once (for example in a service provider) so a locale the dataset
+does not carry returns Romanian instead of an empty string:
 
 ```php
 use Spatie\Translatable\Facades\Translatable;
@@ -388,9 +394,9 @@ The dataset lives in `database/data/cuatm.json` and ships with the package.
 - Both codes, the hierarchy and the Romanian names come from CUATM
   (Clasificatorul unităților administrativ-teritoriale ale Republicii Moldova),
   published by the National Bureau of Statistics - edition of 21 October 2025.
-- Russian and Ukrainian names are Wikidata exonyms; the larger cities, the
-  sectors of Chișinău and the special regions were checked by hand and also
-  carry an English name.
+- Russian and Ukrainian names are Wikidata exonyms. The larger cities, the
+  sectors of Chișinău and the special regions were checked by hand in all four
+  locales; every other English name is the Romanian one romanised.
 - Romanian names are normalised to the comma-below diacritics ș/ț. The
   classifier is typeset with the Turkish cedilla letters ş/ţ, which sort and
   compare differently.

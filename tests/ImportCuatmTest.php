@@ -82,6 +82,32 @@ final class ImportCuatmTest extends TestCase
     }
 
     #[Test]
+    public function every_locality_has_an_ascii_english_name(): void
+    {
+        $this->import();
+
+        $missing = [];
+        $nonAscii = [];
+
+        foreach (Location::query()->cursor() as $location) {
+            $name = $location->getTranslation('name', 'en');
+
+            if (! is_string($name) || $name === '') {
+                $missing[] = $location->slug;
+
+                continue;
+            }
+
+            if (preg_match('/^[\\x20-\\x7E]+$/', $name) !== 1) {
+                $nonAscii[] = $location->slug;
+            }
+        }
+
+        $this->assertSame([], $missing);
+        $this->assertSame([], $nonAscii);
+    }
+
+    #[Test]
     public function romanian_names_use_comma_below_diacritics(): void
     {
         $this->import();

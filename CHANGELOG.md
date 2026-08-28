@@ -4,6 +4,20 @@ All notable changes to this package are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0]
+
+### Added
+
+- An English name on every locality, not just the 22 hand-checked ones. A
+  Moldovan place name has no English translation, it has a romanisation, so the
+  English name is the Romanian one with the diacritics folded away: `Călărași`
+  becomes `Calarasi`, `Țînțăreni` becomes `Tintareni`. Real exonyms keep their
+  own form, which is why `Stînga Nistrului` reads `Transnistria`. 861 names
+  carry no diacritics and are identical in both.
+
+Reading a name in English no longer depends on a fallback being configured.
+Run `php artisan cuatm:import` to pick the names up; nothing else changed.
+
 ## [2.0.0]
 
 Fixes the codes. v1.0.0 stored the wrong column of the classifier.

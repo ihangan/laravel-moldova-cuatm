@@ -28,16 +28,28 @@ final class LocationModelTest extends TestCase
     }
 
     #[Test]
-    public function a_missing_locale_falls_back_to_romanian(): void
+    public function a_locale_the_dataset_does_not_carry_falls_back_to_romanian(): void
     {
-        // A village outside the curated set has no English translation, so the
-        // English read should hand back the Romanian name.
         $village = Location::query()->ofType(LocationType::Village)->firstOrFail();
 
         $this->assertSame(
             $village->getTranslation('name', 'ro'),
-            $village->getTranslation('name', 'en'),
+            $village->getTranslation('name', 'de'),
         );
+    }
+
+    #[Test]
+    public function the_english_name_is_the_romanian_one_romanised(): void
+    {
+        $tintareni = Location::query()->where('slug', 'tintareni')->firstOrFail();
+
+        $this->assertSame('Țînțăreni', $tintareni->getTranslation('name', 'ro'));
+        $this->assertSame('Tintareni', $tintareni->getTranslation('name', 'en'));
+
+        // A real exonym wins over the romanisation.
+        $transnistria = Location::query()->where('slug', 'stinga-nistrului')->firstOrFail();
+
+        $this->assertSame('Transnistria', $transnistria->getTranslation('name', 'en'));
     }
 
     #[Test]
